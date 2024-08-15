@@ -28,6 +28,20 @@ class LibroController{
     }
   }
 
+  async delete(req, res){
+    try {
+      const libro = req.body;
+      const [result] = await pool.query
+      (
+        `DELETE FROM libros WHERE id=(?)`,
+        [libro.id]
+      );
+      res.json({"Libros eliminados": result.affectedRows});
+    } catch (error) {
+      res.status(500).json({ error: 'Error al eliminar libro', details: error.message});
+    }
+  }
+
 }
 
 export const libro = new LibroController();
