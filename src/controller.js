@@ -42,6 +42,23 @@ class LibroController{
     }
   }
 
+  async update(req, res){
+    try {
+      const libro = req.body;
+      const [result] = await pool.query
+      (
+        `UPDATE libros SET nombre=(?), autor=(?), categoria=(?), anio_publicacion=(?), ISBN=(?) WHERE id=(?) `,
+        [
+          libro.nombre, libro.autor, libro.categoria, libro.anio_publicacion, libro.ISBN, libro.id
+        ]
+      );
+      res.json({"Libros actualizados": result.affectedRows }); 
+    } catch (error) {
+      res.status(500).json({ error: 'Error al actualizar libro', details: error.message});
+    }
+    
+  }
+
 }
 
 export const libro = new LibroController();
