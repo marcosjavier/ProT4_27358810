@@ -2,18 +2,59 @@ import {pool} from './database.js';
 
 class LibroController{
 
+  //Obteniendo todos los libros
   async getAll(req, res) {
-    const [result] = await pool.query('SELECT * FROM libros');
-    res.json(result);  
+    try {
+      const [result] = await pool.query('SELECT * FROM libros');
+      res.json(result);      
+    } catch (error) {
+      //Obtener error durante la consulta
+      res.status(500).json({ message: "Error al obtener los libros", error });
+    }    
+      
+  }
+
+  // Obtener un libro por su ID
+  async getOne(req, res) {
+    const { id } = req.params;
+    try {
+      const [result] = await pool.query
+      (
+        `SELECT * FROM libros WHERE id = ?`,
+        [
+        id
+        ]
+      );
+
+      if (result.length === 0) {
+        // Si no se encuentra el libro, devolver un error 404
+        res.status(404).json({ message: "Libro no encontrado" });
+      } else {
+        res.json(result[0]);
+      }
+    } catch (error) {
+      // Manejar cualquier error que ocurra durante la consulta
+      res.status(500).json({ message: "Error al obtener el libro", error });
+    }
   }
 
   async add(req, res){
-    try {
-        /*capturamos el 'cuerpo' de la solicitud http de la solicitud enviada
-        por el cliente y la guardamos en la constante persona para después realizar
+
+    /*capturamos el 'cuerpo' de la solicitud http de la solicitud enviada
+        por el cliente y la guardamos en la constante libro para después realizar
         una sentencia INSERT INTO SQL */
-        //console.log('EY!!'+req.body);
-        const libro = req.body;       
+    const libro = req.body;
+    try {
+         // Validar que solo se envíen atributos válidos
+        if (
+          !libro.nombre ||
+          !libro.autor ||
+          !libro.categoria ||
+          !libro.anio_publicacion ||
+          !libro.ISBN
+        ) {
+          return res.status(400).json({ message: "Faltan atributos requeridos" });
+        }              
 
         const [result] = await pool.query
         (
@@ -28,23 +69,57 @@ class LibroController{
     }
   }
 
+  //Eliminar un libro por su id
   async delete(req, res){
-    try {
+    
       const libro = req.body;
+      
+    try {
       const [result] = await pool.query
       (
-        `DELETE FROM libros WHERE id=(?)`,
-        [libro.id]
+        `SELECT id FROM libros WHERE ISBN=?`,
+        [libro.ISBN]
       );
-      res.json({"Libros eliminados": result.affectedRows});
+
+      if (result.length === 0) {
+        // Si no se encuentra el libro, devolver un error 404
+        return res.status(404).json({ message: "Libro no encontrado con ése ISBM" });
+      }
+
+      // Obtener el ID del libro encontrado
+      const libroId = result[0].id;
+
+      const [deleteResult] = await pool.query
+      (
+        `DELETE FROM libros WHERE id=(?)`,
+        [libroId]
+      );
+
+      if (deleteResult.affectedRows === 0) {
+        res.status(404).json({ message: "No se pudo eliminar el libro" });
+      } else {
+        res.json({ "Registros eliminados": deleteResult.affectedRows });
+      }
     } catch (error) {
       res.status(500).json({ error: 'Error al eliminar libro', details: error.message});
     }
   }
 
   async update(req, res){
-    try {
+    
       const libro = req.body;
+    try {
+      // Validar que solo se envíen atributos válidos
+      if (
+        !libro.nombre ||
+        !libro.autor ||
+        !libro.categoria ||
+        !libro.anio_publicacion ||
+        !libro.ISBN
+      ) {
+        return res.status(400).json({ message: "Faltan atributos requeridos" });
+      }
+
       const [result] = await pool.query
       (
         `UPDATE libros SET nombre=(?), autor=(?), categoria=(?), anio_publicacion=(?), ISBN=(?) WHERE id=(?) `,
@@ -52,7 +127,13 @@ class LibroController{
           libro.nombre, libro.autor, libro.categoria, libro.anio_publicacion, libro.ISBN, libro.id
         ]
       );
-      res.json({"Libros actualizados": result.affectedRows }); 
+      if (result.changedRows === 0) {
+        // Si no se actualizó ningún libro, devolver un error 404
+        res.status(404).json({ message: "Libro no encontrado o sin cambios" });
+      } else {
+        res.json({ "Registro actualizado": result.changedRows });
+      }
+      
     } catch (error) {
       res.status(500).json({ error: 'Error al actualizar libro', details: error.message});
     }
